@@ -1,34 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 /**
  * @title CertificateRegistry
  * @dev Registrador oficial e inmutable de certificados académicos universitarios.
- * Permite a la universidad firmar y registrar la validez de certificados en la blockchain,
- * y a cualquiera consultarlos de forma libre y transparente.
+ * Basado en OpenZeppelin (Ownable + Pausable + ReentrancyGuard) para máxima seguridad.
  */
-contract CertificateRegistry {
+contract CertificateRegistry is Ownable, Pausable, ReentrancyGuard {
     
-    // Propietario del contrato (la Universidad)
-    address public owner;
-    
-    // Estructura de datos para almacenar el certificado
     struct Certificate {
         string id;
         string recipientName;
         string eventName;
-        uint256 issueDate; // Timestamp de emisión
-        address issuer;    // Dirección de la entidad emisora
-        bool isValid;      // Permite inhabilitar certificados en caso de error administrativo
+        uint256 issueDate;
+        address issuer;
+        bool isValid;
     }
     
-    // Mapeo para buscar certificados por su ID único
     mapping(string => Certificate) private certificates;
-    
-    // Lista de IDs emitidos para auditoría/consulta (opcional pero didáctico)
     string[] public certificateIds;
     
-    // Eventos para auditar transacciones en la red
     event CertificateIssued(
         string indexed id, 
         string recipientName, 
@@ -38,29 +33,17 @@ contract CertificateRegistry {
     );
     event CertificateRevoked(string indexed id);
     
-    // Modificador de seguridad
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Solo la entidad emisora autorizada (Universidad) puede realizar esta accion");
-        _;
-    }
-    
-    constructor() {
-        owner = msg.sender;
-    }
+    constructor() Ownable(msg.sender) {}
     
     /**
      * @dev Registra un nuevo certificado en la blockchain.
-     * @param _id Identificador único del certificado (por ejemplo, un UUID o número correlativo).
-     * @param _recipientName Nombre del alumno egresado.
-     * @param _eventName Nombre del foro o evento académico.
-     * @param _issueDate Timestamp de la fecha del evento.
      */
     function issueCertificate(
         string calldata _id,
         string calldata _recipientName,
         string calldata _eventName,
         uint256 _issueDate
-    ) external onlyOwner {
+    ) external onlyOwner whenNotPaused nonReentrant {
         require(bytes(_id).length > 0, "El ID no puede estar vacio");
         require(bytes(_recipientName).length > 0, "El nombre del alumno no puede estar vacio");
         require(bytes(_eventName).length > 0, "El nombre del evento no puede estar vacio");
@@ -82,9 +65,8 @@ contract CertificateRegistry {
     
     /**
      * @dev Permite revocar un certificado en caso de error o fraude.
-     * @param _id Identificador único del certificado.
      */
-    function revokeCertificate(string calldata _id) external onlyOwner {
+    function revokeCertificate(string calldata _id) external onlyOwner whenNotPaused {
         require(certificates[_id].issuer != address(0), "El certificado no existe");
         require(certificates[_id].isValid, "El certificado ya se encuentra inhabilitado");
         
@@ -132,5 +114,19 @@ contract CertificateRegistry {
      */
     function totalCertificates() external view returns (uint256) {
         return certificateIds.length;
+    }
+    
+    /**
+     * @dev Pausa el contrato (solo owner). Detiene emisión/revocación en caso de emergencia.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+    
+    /**
+     * @dev Reanuda el contrato (solo owner).
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

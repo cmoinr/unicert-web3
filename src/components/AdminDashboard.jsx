@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, CheckCircle, Award, Calendar, RefreshCw, Key, Download } from 'lucide-react';
-import { issueCertificateData } from '../utils/blockchain';
+import { ShieldCheck, Plus, CheckCircle, Award, Calendar, RefreshCw, Key, Download, PauseCircle, PlayCircle } from 'lucide-react';
+import { issueCertificateData, CONTRACT_ABI } from '../utils/blockchain';
+import { ethers } from 'ethers';
 import { generateCertificatePDF } from '../utils/pdfGenerator';
 import confetti from 'canvas-confetti';
 
@@ -276,6 +277,10 @@ export default function AdminDashboard({ contractAddress, setContractAddress }) 
             )}
           </button>
         </form>
+
+        {!isDemo && (
+          <EmergencyControls contractAddress={contractAddress} />
+        )}
       </div>
 
       {/* Columna Derecha: Historial y Auditoría del Evento */}
@@ -368,6 +373,64 @@ export default function AdminDashboard({ contractAddress, setContractAddress }) 
         )}
       </div>
 
+    </div>
+  );
+}
+
+function EmergencyControls({ contractAddress }) {
+  const [paused, setPaused] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    checkPaused();
+  }, [contractAddress]);
+
+  const checkPaused = async () => {
+    try {
+      const provider = new ethers.JsonRpcProvider('https://polygon-amoy-bor-rpc.publicnode.com');
+      const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, provider);
+      const isPaused = await contract.paused();
+      setPaused(isPaused);
+    } catch {
+      setPaused(null);
+    }
+  };
+
+  const togglePause = async () => {
+    if (!window.ethereum) return alert('Conecta MetaMask primero');
+    setLoading(true);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
+      const tx = paused ? await contract.unpause() : await contract.pause();
+      await tx.wait();
+      await checkPaused();
+    } catch (err) {
+      alert('Error: ' + (err.reason || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (paused === null) return null;
+
+  return (
+    <div style={{ marginTop: '24px', padding: '16px', borderRadius: '12px', background: paused ? 'rgba(239,68,68,0.08)' : 'rgba(52,211,153,0.08)', border: `1px solid rgba(${paused ? '239,68,68' : '52,211,153'},0.2)` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div>
+          <p style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {paused ? <PauseCircle size={18} style={{ color: '#f87171' }} /> : <PlayCircle size={18} style={{ color: '#34d399' }} />}
+            {paused ? 'Contrato Pausado' : 'Contrato Activo'}
+          </p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            {paused ? 'No se pueden emitir ni revocar certificados.' : 'Funcionando con normalidad.'}
+          </p>
+        </div>
+        <button onClick={togglePause} disabled={loading} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+          {loading ? <span className="spinner"></span> : paused ? 'Reanudar' : 'Pausar Emergencia'}
+        </button>
+      </div>
     </div>
   );
 }

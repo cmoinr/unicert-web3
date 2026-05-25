@@ -1,216 +1,9 @@
 import { ethers } from 'ethers';
+import abi from './CertificateRegistry.json';
+export const CONTRACT_ABI = abi;
 
-// ABI Oficial del Smart Contract CertificateRegistry
-export const CONTRACT_ABI = [
-  {
-    "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "string",
-        "name": "id",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "recipientName",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "eventName",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "issueDate",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "issuer",
-        "type": "address"
-      }
-    ],
-    "name": "CertificateIssued",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "string",
-        "name": "id",
-        "type": "string"
-      }
-    ],
-    "name": "CertificateRevoked",
-    "type": "event"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "certificateIds",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_id",
-        "type": "string"
-      }
-    ],
-    "name": "getCertificate",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "id",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "recipientName",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "eventName",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "issueDate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "issuer",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "isValid",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_id",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_recipientName",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_eventName",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_issueDate",
-        "type": "uint256"
-      }
-    ],
-    "name": "issueCertificate",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_id",
-        "type": "string"
-      }
-    ],
-    "name": "isCertificateValid",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "owner",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_id",
-        "type": "string"
-      }
-    ],
-    "name": "revokeCertificate",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "totalCertificates",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
-
-// Configuración de red para Polygon Amoy (Testnet)
 export const POLYGON_AMOY_CONFIG = {
-  chainId: '0x13882', // 80002 en decimal
+  chainId: '0x13882',
   chainName: 'Polygon Amoy Testnet',
   nativeCurrency: {
     name: 'POL',
@@ -221,7 +14,18 @@ export const POLYGON_AMOY_CONFIG = {
   blockExplorerUrls: ['https://amoy.polygonscan.com']
 };
 
-// Proveedor RPC Público por defecto para consultas libres de costo y sin MetaMask
+export const POLYGON_MAINNET_CONFIG = {
+  chainId: '0x89',
+  chainName: 'Polygon Mainnet',
+  nativeCurrency: {
+    name: 'POL',
+    symbol: 'POL',
+    decimals: 18
+  },
+  rpcUrls: ['https://polygon-rpc.com'],
+  blockExplorerUrls: ['https://polygonscan.com']
+};
+
 export const PUBLIC_RPC_PROVIDER_URL = 'https://polygon-amoy-bor-rpc.publicnode.com';
 
 // Clave en LocalStorage para certificados simulados en "Modo Demo"
@@ -338,48 +142,37 @@ export async function issueCertificateData(data, contractAddress) {
     throw new Error('MetaMask no está instalado. Instálalo para emitir certificados reales.');
   }
 
-  // Instanciar proveedor de MetaMask
   const provider = new ethers.BrowserProvider(window.ethereum);
-  
-  // Solicitar conexión de cuentas
   await provider.send("eth_requestAccounts", []);
   
   const signer = await provider.getSigner();
   
-  // Comprobar si está en la red correcta de Polygon Amoy, si no, pedir cambio
+  // Detectar red actual y cambiar si es necesario
   const network = await provider.getNetwork();
-  if (network.chainId !== 80002n) {
+  const targetChainId = 80002n;
+  
+  if (network.chainId !== targetChainId) {
+    const targetConfig = POLYGON_AMOY_CONFIG;
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: POLYGON_AMOY_CONFIG.chainId }],
+        params: [{ chainId: targetConfig.chainId }],
       });
     } catch (switchError) {
-      // Si la red no está agregada en MetaMask, la agregamos
       if (switchError.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [POLYGON_AMOY_CONFIG],
-          });
-        } catch (addError) {
-          throw new Error('No se pudo agregar la red Polygon Amoy a tu MetaMask');
-        }
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [targetConfig],
+        });
       } else {
-        throw new Error('Por favor, cambia tu MetaMask a la red Polygon Amoy');
+        throw new Error('Cambia tu MetaMask a la red Polygon Amoy');
       }
     }
   }
 
   const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
-  
-  // Ejecutar transacción de emisión del certificado en el Smart Contract
-  // Nota: issueDate se envía como timestamp en segundos para Solidity (issueDate / 1000)
   const timestampInSeconds = Math.floor(Number(issueDate) / 1000);
-  
   const tx = await contract.issueCertificate(id, recipientName, eventName, timestampInSeconds);
-  
-  // Esperar confirmación de la transacción (1 bloque)
   const receipt = await tx.wait();
   
   return {
