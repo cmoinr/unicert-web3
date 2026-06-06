@@ -2,7 +2,12 @@ import "dotenv/config";
 
 /** @type {import('hardhat/config').HardhatUserConfig} */
 const config = {
-  solidity: "0.8.20",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      evmVersion: "cancun"
+    }
+  },
   networks: {
     hardhat: {
       type: "edr-simulated"
