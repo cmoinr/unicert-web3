@@ -98,6 +98,7 @@ export async function issueCertificateData(data, contractAddress) {
       recipientName,
       eventName,
       issueDate: Number(issueDate),
+      issuanceDate: Date.now(),
       issuer: mockIssuer,
       isValid: true,
       transactionHash: randomHash,
@@ -195,6 +196,7 @@ export async function batchIssueCertificatesData(certificatesArray, contractAddr
         recipientName,
         eventName,
         issueDate: Number(issueDate),
+        issuanceDate: Date.now(),
         issuer: mockIssuer,
         isValid: true,
         transactionHash: randomHash,
@@ -267,6 +269,7 @@ export async function batchIssueCertificatesData(certificatesArray, contractAddr
     results.push({
       ...cert,
       issueDate: Number(cert.issueDate),
+      issuanceDate: Date.now(),
       transactionHash: receipt.hash,
       tokenId: Number(tokenId),
       issuer: await signer.getAddress(),
@@ -282,3 +285,128 @@ export async function batchIssueCertificatesData(certificatesArray, contractAddr
     isRealBlockchain: true
   };
 }
+
+/**
+ * Determina cuál es el próximo sufijo libre para una cédula antes de emitir,
+ * comprobando localmente y en el contrato.
+ */
+export async function getNextAvailableSuffix(cedula, contractAddress) {
+  const cleanCedula = cedula.trim().toUpperCase().replace(/^UC-/, '');
+  
+  // 1. Revisar en local primero (siempre es rápido y sirve de caché/fallback)
+  const localCerts = localStorage.getItem(LOCAL_STORAGE_KEY);
+  const certsObj = localCerts ? JSON.parse(localCerts) : {};
+  
+  // Determinar qué sufijos ya están tomados en local
+  const localTaken = new Set();
+  if (certsObj[`UC-${cleanCedula}`] || certsObj[cleanCedula]) {
+    localTaken.add(0); // El ID base ya está tomado
+  }
+  
+  for (let s = 1; s <= 50; s++) {
+    if (certsObj[`UC-${cleanCedula}-${s}`] || certsObj[`${cleanCedula}-${s}`]) {
+      localTaken.add(s);
+    }
+  }
+
+  // Si no hay blockchain real, retornamos basándonos en lo local
+  if (!contractAddress || contractAddress.trim() === '' || contractAddress === '0x0000000000000000000000000000000000000000') {
+    if (!localTaken.has(0)) return 0; // Si el base está libre, usamos el base
+    let suffix = 1;
+    while (localTaken.has(suffix)) {
+      suffix++;
+    }
+    return suffix;
+  }
+
+  // Si hay blockchain real, validamos contra el contrato
+  try {
+    const provider = new ethers.JsonRpcProvider(PUBLIC_RPC_PROVIDER_URL);
+    const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, provider);
+
+    // ¿El ID base está tomado en blockchain?
+    let baseTaken = false;
+    try {
+      await contract.getTokenIdByCertId(`UC-${cleanCedula}`);
+      baseTaken = true;
+    } catch (e) {
+      try {
+        await contract.getTokenIdByCertId(cleanCedula);
+        baseTaken = true;
+      } catch (e2) {}
+    }
+
+    if (!baseTaken && !localTaken.has(0)) {
+      return 0; // Usar ID base sin sufijo
+    }
+
+    let suffix = 1;
+    while (suffix <= 50) {
+      if (localTaken.has(suffix)) {
+        suffix++;
+        continue;
+      }
+
+      try {
+        await contract.getTokenIdByCertId(`UC-${cleanCedula}-${suffix}`);
+        suffix++;
+      } catch (e) {
+        // Si falló, significa que no existe en el contrato, por ende está libre
+        return suffix;
+      }
+    }
+    return suffix;
+  } catch (err) {
+    console.error('Error consultando contrato para sufijo, usando local:', err);
+    if (!localTaken.has(0)) return 0;
+    let suffix = 1;
+    while (localTaken.has(suffix)) {
+      suffix++;
+    }
+    return suffix;
+  }
+}
+
+/**
+ * Busca todos los certificados asociados a una cédula (o ID exacto).
+ * Comprueba ID base y sufijos del 1 al 20.
+ */
+export async function getCertificatesByCedula(cedula, contractAddress) {
+  const results = [];
+  const cleanCedula = cedula.trim().toUpperCase().replace(/^UC-/, '');
+
+  // 1. Intentar con el ID base (con y sin prefijo UC-)
+  try {
+    const cert = await getCertificateData(`UC-${cleanCedula}`, contractAddress);
+    results.push(cert);
+  } catch (e) {
+    try {
+      const cert = await getCertificateData(cleanCedula, contractAddress);
+      results.push(cert);
+    } catch (e2) {}
+  }
+
+  // 2. Intentar con sufijos secuenciales (-1, -2, -3, etc.)
+  let suffix = 1;
+  let consecutiveFailures = 0;
+  // Buscamos hasta sufijo 20, deteniéndonos si hay 2 fallas consecutivas para no hacer llamadas infinitas
+  while (suffix <= 20 && consecutiveFailures < 2) {
+    try {
+      const cert = await getCertificateData(`UC-${cleanCedula}-${suffix}`, contractAddress);
+      if (!results.some(r => r.id === cert.id)) {
+        results.push(cert);
+      }
+      consecutiveFailures = 0;
+    } catch (e) {
+      consecutiveFailures++;
+    }
+    suffix++;
+  }
+
+  if (results.length === 0) {
+    throw new Error('Certificado no encontrado en el sistema. Asegúrate de ingresar un ID o Cédula válidos.');
+  }
+
+  return results;
+}
+

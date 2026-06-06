@@ -11,6 +11,22 @@ export default function App() {
   );
   const [walletAddress, setWalletAddress] = useState('');
 
+  // Estados de autorización admin
+  const [isAdminAuthorized, setIsAdminAuthorized] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    const correctPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+    if (adminPasswordInput === correctPassword) {
+      setIsAdminAuthorized(true);
+      setPasswordError('');
+    } else {
+      setPasswordError('Contraseña incorrecta. Inténtalo de nuevo.');
+    }
+  };
+
   // Guardar dirección del contrato automáticamente
   useEffect(() => {
     localStorage.setItem('blockchain_contract_address', contractAddress);
@@ -74,90 +90,114 @@ export default function App() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
       {/* HEADER DE LA APLICACIÓN */}
-      <header className="glass-panel" style={{ margin: '20px 20px 0', padding: '16px 30px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setActiveTab('verify')}>
-          <div style={{ background: 'linear-gradient(135deg, hsla(var(--primary), 1) 0%, hsla(var(--secondary), 1) 100%)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(139, 92, 246, 0.4)' }}>
-            <Award size={22} style={{ color: 'white' }} />
+      <header className="glass-panel" style={{ margin: '20px 20px 0', padding: '16px 30px', borderRadius: '0px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', border: '2px solid #ffffff', boxShadow: '5px 5px 0px #ff6600', background: '#0a0a0a' }}>
+        <div 
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: isAdminAuthorized ? 'default' : 'pointer' }} 
+          onClick={() => {
+            if (!isAdminAuthorized) {
+              setActiveTab('verify');
+            }
+          }}
+        >
+          <div style={{ background: '#ff6600', width: '40px', height: '40px', borderRadius: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #ffffff', boxShadow: '3px 3px 0px #ffffff' }}>
+            <Award size={22} style={{ color: '#000000' }} />
           </div>
           <div>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.5px' }}>
-              UniCert <span className="glow-text-purple">Web3</span>
+              Uni<span style={{ color: '#ff6600' }}>Cert</span>
             </h1>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', tracking: '1px', textTransform: 'uppercase', display: 'block', marginTop: '-2px' }}>
-              Blockchain Credentials
+              Credenciales Blockchain
             </span>
           </div>
         </div>
 
         {/* NAVEGACIÓN */}
-        <nav style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            className={`nav-link ${activeTab === 'verify' ? 'active' : ''}`}
-            onClick={() => setActiveTab('verify')}
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.95rem' }}
-          >
-            Portal de Verificación
-          </button>
+        <nav style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {!isAdminAuthorized && (
+            <button 
+              className={`nav-link ${activeTab === 'verify' ? 'active' : ''}`}
+              onClick={() => setActiveTab('verify')}
+              style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.95rem' }}
+            >
+              Portal de Verificación
+            </button>
+          )}
           <button 
             className={`nav-link ${activeTab === 'admin' ? 'active' : ''}`}
             onClick={() => setActiveTab('admin')}
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.95rem' }}
+            style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.95rem' }}
           >
-            Panel Administrativo (Universidad)
+            Admin
           </button>
+          {isAdminAuthorized && (
+            <button 
+              className="btn-secondary"
+              onClick={() => {
+                setIsAdminAuthorized(false);
+                setAdminPasswordInput('');
+                setActiveTab('verify');
+              }}
+              style={{ padding: '6px 12px', fontSize: '0.8rem', border: '2px solid #ff3333', color: '#ff3333', boxShadow: '2px 2px 0px #ffffff' }}
+            >
+              Cerrar Sesión
+            </button>
+          )}
         </nav>
 
         {/* BOTÓN CONEXIÓN WALLET */}
-        <div>
-          {walletAddress ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '8px 16px', borderRadius: '12px', color: '#34d399', fontSize: '0.85rem', fontWeight: 600 }}>
-              <Wallet size={16} />
-              <span>{walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}</span>
-            </div>
-          ) : (
-            <button className="btn-secondary" onClick={connectWallet} style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wallet size={16} />
-              <span>Conectar MetaMask</span>
-            </button>
-          )}
-        </div>
+        {activeTab === 'admin' && isAdminAuthorized && (
+          <div>
+            {walletAddress ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#000000', border: '2px solid #ff6600', padding: '8px 16px', borderRadius: '0px', color: '#ff6600', fontSize: '0.85rem', fontWeight: 700, boxShadow: '3px 3px 0px #ffffff' }}>
+                <Wallet size={16} />
+                <span>{walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}</span>
+              </div>
+            ) : (
+              <button className="btn-secondary" onClick={connectWallet} style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Wallet size={16} />
+                <span>Conectar MetaMask</span>
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {/* CONTENIDO PRINCIPAL */}
       <main style={{ flex: 1, padding: '20px', maxWidth: '1280px', width: '100%', margin: '0 auto' }}>
         
-        {/* BANNER DE BIENVENIDA E INSTRUCCIONES */}
-        <div className="glass-panel" style={{ padding: '24px 30px', marginBottom: '30px', borderLeft: isDemo ? '4px solid #fbbf24' : '4px solid #34d399', background: 'linear-gradient(90deg, rgba(13,17,30,0.5) 0%, rgba(255,255,255,0.01) 100%)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Cpu size={18} style={{ color: isDemo ? '#fbbf24' : '#34d399' }} />
-                <span>Estado del Entorno: {isDemo ? 'Modo Demostración (Simulado)' : 'Modo Blockchain Real (Polygon Amoy)'}</span>
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '6px', lineHeight: 1.6 }}>
-                {isDemo 
-                  ? 'Esta aplicación se está ejecutando de forma local y simulada. Puedes emitir certificados y verificar sus códigos QR sin MetaMask de forma didáctica. Para conectar tu propio Smart Contract en la testnet, dirígete al "Panel Administrativo" y pega la dirección de tu contrato desplegado.'
-                  : `¡Conectado exitosamente al Smart Contract real en Polygon Amoy! Todas las emisiones requerirán la firma del Rector/Administrador en MetaMask y los certificados se registrarán de forma inmutable.`
-                }
-              </p>
-            </div>
-            {!isDemo && (
-              <a 
-                href={`https://amoy.polygonscan.com/address/${contractAddress}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="btn-secondary"
-                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
-              >
-                <span>Ver Contrato</span> <ExternalLink size={14} />
-              </a>
-            )}
-          </div>
-        </div>
-
         {/* CONTENEDOR DE PESTAÑAS */}
         {activeTab === 'verify' ? (
           <VerificationPortal contractAddress={contractAddress} />
+        ) : !isAdminAuthorized ? (
+          <div className="glass-panel" style={{ maxWidth: '450px', margin: '60px auto', padding: '40px 30px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '20px', borderRadius: '0px', border: '2px solid #ffffff', boxShadow: '6px 6px 0px #ff6600' }}>
+            <div style={{ background: '#000000', width: '60px', height: '60px', borderRadius: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', border: '2px solid #ff6600', boxShadow: '4px 4px 0px #ffffff' }}>
+              <ShieldCheck size={30} style={{ color: '#ff6600' }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '6px' }}>Acceso Administrativo</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                Ingresa la contraseña para gestionar las plantillas y emitir certificados.
+              </p>
+            </div>
+            <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input
+                type="password"
+                className="custom-input"
+                placeholder="Contraseña (de prueba: admin123)"
+                value={adminPasswordInput}
+                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                style={{ textAlign: 'center', letterSpacing: '0.1em', borderRadius: '0px' }}
+                autoFocus
+              />
+              {passwordError && (
+                <span style={{ color: '#ff3333', fontSize: '0.825rem', fontWeight: 700 }}>{passwordError}</span>
+              )}
+              <button type="submit" className="btn-primary" style={{ display: 'flex', justifyContent: 'center', gap: '8px', width: '100%' }}>
+                <span>Ingresar al Panel</span>
+              </button>
+            </form>
+          </div>
         ) : (
           <AdminDashboard 
             contractAddress={contractAddress} 
@@ -167,8 +207,8 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer style={{ borderTop: '1px solid var(--border-glass)', padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(5,7,15,0.4)', backdropFilter: 'blur(10px)' }}>
-        <p>© 2026 UniCert Web3. Proyecto de Tokenización de Certificados Académicos.</p>
+      <footer style={{ borderTop: '2px solid #ffffff', padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: '#000000' }}>
+        <p style={{ fontFamily: 'inherit' }}>© 2026 UniCert. Proyecto de Tokenización de Certificados Académicos.</p>
         <p style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
           Desarrollado para la validación inmutable de credenciales mediante Smart Contracts en redes Blockchain.
         </p>
